@@ -17,4 +17,5 @@ def run_scrapping (int):
     df_cleaned.to_csv(raw_csv_path)
     print(f"Données sauvegardés dans : {raw_csv_path}")
     print(f"Insertion des données en base de données")
-    create_BDD(df_books=raw_csv_path)
+    BDD = create_BDD(df_books=raw_csv_path)
+    return BDD

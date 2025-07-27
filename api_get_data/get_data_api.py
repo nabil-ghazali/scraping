@@ -24,9 +24,15 @@ def search_parameters () ->dict:
                 return parameters
     
 def printType_parameters () -> dict:
+    """
+    Demande à l'utilisateur de choisir un type de contenu à rechercher (books, magazines, ou all).
+    Met à jour le dictionnaire global 'parameters' avec la clé 'printType'.
 
+    Returns:
+        dict: Le dictionnaire des paramètres mis à jour avec le type de contenu choisi.
+    """
     print( " Veuillez choisir quel contenu vous souhaitez entre les propositions suivantes : ")
-    params = input (" books / magazines or all : ")
+    params = input (" books / magazines or all : \n ")
     while True:
         match params.lower().strip():  # pour éviter les problèmes de casse
             case "books":
@@ -47,9 +53,9 @@ def filter_parameters () ->dict:
     Renvoie le dictionnaire de paramètres mis à jour.
     """
 
-    print( " Veuillez choisir la visualisation des résultats dans les propositions suivantes, selon les diffèrents 'filter'  : ")
+    print( " Veuillez choisir la visualisation des résultats dans les propositions suivantes, selon les diffèrents 'filter'  : \n")
 
-    filters = input(" partial : limite les résultats aux volumes dont au moins une partie du texte est disponible en aperçu. \n full : limite les résultats aux volumes où tout le texte est visible. \n free-ebooks : limite les résultats aux livres numériques sans frais sur Google. \n paid-ebooks : limite les résultats aux e-books Google avec un prix d'achat. \n ebooks : limite les résultats aux livres numériques Google, payants ou gratuits.\n ") 
+    filters = input(" partial : limite les résultats aux volumes dont au moins une partie du texte est disponible en aperçu. \n \n full : limite les résultats aux volumes où tout le texte est visible. \n \n free-ebooks : limite les résultats aux livres numériques sans frais sur Google. \n \n paid-ebooks : limite les résultats aux e-books Google avec un prix d'achat. \n \n ebooks : limite les résultats aux livres numériques Google, payants ou gratuits.\n \n ") 
 
     while True:
         match filters.lower().strip():  # pour éviter les problèmes de casse
@@ -91,7 +97,7 @@ def numberResult_parameters() -> dict:
         number_result = int(user_input)
         if 1 <= number_result <= 40:
             parameters['maxResults'] = number_result
-            return parameters
+            return parameters 
         else:
             print("Veuillez entrer un nombre compris entre 1 et 40.")
 
@@ -100,10 +106,10 @@ def order_parameters() -> dict:
     Permet à l'utilisateur de choisir l'ordre des résultats (relevance ou newest).
     Renvoie le dictionnaire de paramètres mis à jour.
     """
-    print( " Choisissez parmis les propositions suivantes :")
+    print( " Choisissez parmis les propositions suivantes : \n ")
 
     while True:
-        user_input = input(" Vous pouvez modifier l'ordre en définissant le paramètre orderBy sur l'une des valeurs suivantes: .\n relevance : renvoie les résultats par ordre de pertinence des termes de recherche (valeur par défaut). \n newest : renvoie les résultats dans l'ordre de publication, du plus récent au moins récent. \n ").strip().lower()
+        user_input = input(" Vous pouvez modifier l'ordre en définissant le paramètre orderBy sur l'une des valeurs suivantes: .\n \n relevance : renvoie les résultats par ordre de pertinence des termes de recherche (valeur par défaut). \n \n newest : renvoie les résultats dans l'ordre de publication, du plus récent au moins récent. \n \n ").strip().lower()
 
         if user_input.strip() == "":
             print("Ce champ est obligatoire")
@@ -116,7 +122,29 @@ def order_parameters() -> dict:
             parameters['orderBy'] = user_input
             return parameters
 
-def get_data_API( url= 'https://www.googleapis.com/books/v1/volumes'):
+def get_data( url= 'https://www.googleapis.com/books/v1/volumes'):
+
+    """
+    Interroge l'API Google Books en construisant dynamiquement les paramètres
+    selon les choix de l'utilisateur, puis renvoie les données brutes en format JSON.
+
+    Étapes :
+    - Appelle plusieurs fonctions pour collecter les paramètres utilisateur (recherche, filtres, etc.)
+    - Envoie une requête HTTP GET à l'API Google Books avec ces paramètres
+    - Vérifie le code de statut de la réponse
+    - Affiche l'URL finale utilisée
+    - Renvoie les données JSON de la réponse
+
+    Paramètres :
+    ----------
+    url : str, optionnel
+        L'URL de base de l'API Google Books (défaut : 'https://www.googleapis.com/books/v1/volumes')
+
+    Retour :
+    -------
+    dict :
+        Données brutes (JSON) retournées par l'API Google Books
+    """
     search_parameters()
     printType_parameters()
     filter_parameters()
@@ -140,4 +168,46 @@ def get_data_API( url= 'https://www.googleapis.com/books/v1/volumes'):
     # Récupérer le coeur de la réponse
     data_books_raw = response.json()
     return data_books_raw
+
+
+def data_to_dataframe(data_books):
+    
+    """
+    Transforme les données JSON récupérées de l'API Google Books en un DataFrame Pandas.
+
+    Paramètres
+    ----------
+    data_books : dict
+        Données brutes issues de l'API Google Books (résultat de .json()).
+
+    Retour
+    ------
+    df_books : pandas.DataFrame
+        DataFrame contenant les colonnes suivantes :
+        - 'title' : titre du livre
+        - 'price' : prix du livre (si disponible)
+        - 'rating' : note moyenne (si disponible)
+    """
+    data_books = data_books.get("items", [])
+
+    # Création d'une liste de dictionnaires pour les livres
+    books_list = []
+
+    for item in data_books: 
+        title = item.get("volumeInfo", []).get("title", [])
+        price = item.get("saleInfo", {}).get("listPrice", {}).get("amount")
+        rating = item.get("volumeInfo", {}).get("averageRating")
+
+        book_dict = {
+            "title" : title,
+            "price" : price,
+            "rating" : rating
+        }
+
+        books_list.append(book_dict)
+
+    # Créer un dataframe à partir de la liste de dictionnaires
+    df_books = pd.DataFrame(books_list)
+
+    return df_books
 
